@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LNS — Letter-Number Sequencing</title>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=DM+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:          #07070b;
+  --surface:     #0d0d15;
+  --surface2:    #13131f;
+  --surface3:    #18182a;
+  --border:      #1c1c30;
+  --border2:     #252540;
+  --accent:      #818cf8;
+  --accent-dim:  rgba(129,140,248,0.11);
+  --accent-glow: rgba(129,140,248,0.32);
+  --success:     #34d399;
+  --success-dim: rgba(52,211,153,0.09);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.09);
+  --warning:     #fbbf24;
+  --warn-dim:    rgba(251,191,36,0.09);
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.1);
+  --text:        #dde1f0;
+  --text-dim:    #58637a;
+  --text-muted:  #2a2d42;
+  --mono: 'Fira Code', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -5%, rgba(129,140,248,0.07) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 85% 80%, rgba(34,211,238,0.03) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: 0.5;
+}
+
+.container {
+  width: 100%; max-width: 760px;
+  padding: 44px 20px 120px;
+  position: relative; z-index: 1;
+}
+
+/* Header */
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  gap: 16px;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.4em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  opacity: 0.65;
+}
+
+h1 {
+  font-size: 26px; font-weight: 600;
+  letter-spacing: -0.035em; line-height: 1.05; margin-bottom: 6px;
+}
+h1 .lns { color: var(--accent); text-shadow: 0 0 28px var(--accent-glow); }
+
+.subtitle { font-size: 12px; color: var(--text-dim); font-weight: 300; line-height: 1.55; }
+
+.header-score {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;
+}
+.score-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase; }
+.score-val   { font-family: var(--mono); font-size: 28px; font-weight: 600; color: var(--cyan); text-shadow: 0 0 20px rgba(34,211,238,0.3); line-height: 1; }
+
+/* Settings Grid */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px 16px;
+}
+.settings-card.full { grid-column: 1 / -1; }
+
+.card-title {
+  font-family: var(--mono);
+  font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-rows { display: flex; flex-direction: column; gap: 9px; }
+
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.setting-label { font-size: 11px; color: var(--text-dim); font-weight: 400; white-space: nowrap; flex: 1; }
+.setting-label small { display: block; font-size: 9px; color: var(--text-muted); margin-top: 1px; }
+
+/* Toggles */
+.toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { display: none; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.toggle-slider::after {
+  content: ''; position: absolute;
+  width: 14px; height: 14px;
+  background: var(--text-muted); border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.toggle input:checked + .toggle-slider { background: var(--accent-dim); border-color: var(--accent); }
+.toggle input:checked + .toggle-slider::after { background: var(--accent); transform: translateX(16px); box-shadow: 0 0 8px var(--accent-glow); }
+.toggle.warn input:checked + .toggle-slider { background: var(--warn-dim); border-color: var(--warning); }
+.toggle.warn input:checked + .toggle-slider::after { background: var(--warning); box-shadow: 0 0 8px rgba(251,191,36,0.4); }
+.toggle.cyan input:checked + .toggle-slider { background: var(--cyan-dim); border-color: var(--cyan); }
+.toggle.cyan input:checked + .toggle-slider::after { background: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,0.4); }
+
+select.ctrl-select {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-family: var(--mono);
+  font-size: 12px; padding: 4px 8px; outline: none; cursor: pointer;
+  transition: border-color 0.15s; width: 68px;
+}
+select.ctrl-select:focus { border-color: var(--accent); }
+
+.slider-wrap { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 160px; }
+
+.ctrl-slider {
+  -webkit-appearance: none; appearance: none;
+  flex: 1; height: 3px; background: var(--border2);
+  border-radius: 3px; outline: none; cursor: pointer;
+}
+.ctrl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: var(--accent); border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-glow); cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.ctrl-slider::-webkit-slider-thumb:hover { box-shadow: 0 0 14px var(--accent-glow); }
+
+.slider-val {
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  min-width: 32px; text-align: right;
+}
+
+/* Meta Bar */
+.meta-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2px; margin-bottom: 14px;
+}
+.meta-stat { display: flex; align-items: baseline; gap: 7px; }
+.stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); }
+.stat-val   { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--accent); line-height: 1; }
+.mode-pill  {
+  font-size: 8px; padding: 2px 6px; border-radius: 3px;
+  background: var(--warn-dim); border: 1px solid rgba(251,191,36,0.28);
+  color: var(--warning); letter-spacing: 0.1em; text-transform: uppercase; vertical-align: middle;
+}
+
+.streak-group { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.streak-track { display: flex; align-items: center; gap: 7px; }
+.track-label  { font-family: var(--mono); font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); min-width: 30px; text-align: right; }
+.dots { display: flex; gap: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); border: 1px solid var(--border); transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+.dot.ok.filled  { background: var(--success); border-color: var(--success); box-shadow: 0 0 8px rgba(52,211,153,0.45); }
+.dot.err.filled { background: var(--error);   border-color: var(--error);   box-shadow: 0 0 8px rgba(248,113,113,0.45); }
+
+/* Stage */
+.stage {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; min-height: 240px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 36px 28px; margin-bottom: 10px;
+  position: relative; overflow: hidden;
+  text-align: center; gap: 18px;
+  transition: border-color 0.3s;
+}
+.stage.active { border-color: var(--border2); }
+
+.stage-scanline {
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  opacity: 0; transition: opacity 0.5s;
+}
+.stage.active .stage-scanline { opacity: 0.35; }
+
+/* Rule Flash */
+.rule-flash {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: var(--surface); z-index: 10;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s;
+}
+.rule-flash.show { opacity: 1; pointer-events: auto; }
+.rule-flash-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--text-dim); }
+.rule-flash-text  { font-family: var(--mono); font-size: 42px; font-weight: 600; letter-spacing: 0.05em; line-height: 1; }
+.rule-flash-text.normal  { color: var(--success); text-shadow: 0 0 30px rgba(52,211,153,0.45); }
+.rule-flash-text.reverse { color: var(--error);   text-shadow: 0 0 30px rgba(248,113,113,0.45); }
+.rule-flash-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; }
+
+/* Idle */
+.idle-content { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.idle-icon {
+  width: 52px; height: 52px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface2);
+  display: flex; align-items: center; justify-content: center; opacity: 0.7;
+}
+.idle-text { font-size: 12.5px; color: var(--text-dim); font-weight: 300; line-height: 1.6; max-width: 340px; }
+.idle-text strong { color: var(--text); font-weight: 500; }
+
+/* Sequence display */
+.seq-display {
+  font-family: var(--mono); font-size: 58px; font-weight: 600;
+  letter-spacing: 0.2em; min-height: 76px;
+  display: none; align-items: center; justify-content: center;
+  gap: 2px; line-height: 1; flex-wrap: wrap;
+}
+.seq-char {
+  display: inline-block;
+  opacity: 0; transform: translateY(-14px) scale(1.15);
+  animation: charIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+.seq-char.num        { color: var(--accent); text-shadow: 0 0 24px var(--accent-glow); }
+.seq-char.let        { color: var(--text); }
+.seq-char.dist       { color: var(--text-muted); font-size: 38px; }
+.seq-char.hard-ambig { color: var(--warning); text-shadow: 0 0 18px rgba(251,191,36,0.4); }
+
+@keyframes charIn { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.stage-hint { font-family: var(--mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; display: none; }
+
+/* Delay ring */
+.countdown-wrap { display: none; flex-direction: column; align-items: center; gap: 10px; }
+.ring-wrap { position: relative; width: 68px; height: 68px; }
+.ring-wrap svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--border); stroke-width: 3; }
+.ring-fg {
+  fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round;
+  stroke-dasharray: 195; stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+  filter: drop-shadow(0 0 5px var(--accent));
+}
+.ring-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 24px; font-weight: 600; color: var(--accent);
+}
+.delay-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 0.22em; text-transform: uppercase; }
+
+/* Answer area */
+.answer-area { display: none; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.answer-area.visible { display: flex; }
+
+.answer-rule-pill {
+  font-family: var(--mono); font-size: 10px; padding: 4px 12px;
+  border-radius: 4px; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.answer-rule-pill.normal  { background: var(--success-dim); border: 1px solid rgba(52,211,153,0.25); color: var(--success); }
+.answer-rule-pill.reverse { background: var(--error-dim);   border: 1px solid rgba(248,113,113,0.25); color: var(--error); }
+
+.answer-hint { font-size: 11px; color: var(--text-dim); font-family: var(--mono); letter-spacing: 0.04em; }
+.answer-hint .dist-note { color: var(--text-muted); font-size: 10px; display: block; margin-top: 4px; }
+
+.input-row { display: flex; gap: 8px; width: 100%; max-width: 440px; }
+
+.answer-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 12px 16px;
+  font-family: var(--mono); font-size: 24px; font-weight: 400;
+  color: var(--text); letter-spacing: 0.26em; text-align: center;
+  text-transform: uppercase; outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.answer-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.answer-input::placeholder { color: var(--text-muted); letter-spacing: 0.08em; font-size: 16px; }
+
+/* Timer bar */
+.timer-bar-wrap {
+  width: 100%; height: 3px;
+  background: var(--border); border-radius: 2px;
+  overflow: hidden; display: none;
+}
+.timer-bar-fill {
+  height: 100%; width: 100%; border-radius: 2px;
+  background: var(--accent); transform-origin: left center; transition: none;
+}
+.timer-bar-fill.running { background: var(--accent); }
+.timer-bar-fill.warn-zone   { background: var(--warning); }
+.timer-bar-fill.danger-zone { background: var(--error); }
+
+/* Buttons */
+.btn {
+  padding: 11px 24px; border: none; border-radius: 7px;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.14s; letter-spacing: 0.01em; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #07070b; box-shadow: 0 0 22px rgba(129,140,248,0.2); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 0 36px rgba(129,140,248,0.4); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.25; cursor: not-allowed; }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 9px 16px; font-size: 12px; border-radius: 6px; }
+.start-row { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+
+/* Feedback */
+.feedback {
+  width: 100%; padding: 13px 18px; border-radius: 7px;
+  font-family: var(--mono); font-size: 12px;
+  opacity: 0; transform: translateY(5px);
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none; text-align: center; line-height: 1.7;
+}
+.feedback.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.feedback.correct { background: var(--success-dim); border: 1px solid rgba(52,211,153,0.25); color: var(--success); }
+.feedback.wrong   { background: var(--error-dim);   border: 1px solid rgba(248,113,113,0.25); color: var(--error); }
+.feedback.timeout { background: var(--warn-dim);    border: 1px solid rgba(251,191,36,0.25);  color: var(--warning); }
+.feedback .fb-detail { display: block; margin-top: 5px; font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; }
+.feedback .fb-detail .val { color: var(--text); letter-spacing: 0.2em; font-size: 13px; }
+
+/* History section */
+.history-section {
+  margin-top: 48px; border-top: 1px solid var(--border); padding-top: 32px;
+}
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.3em; color: var(--text-dim); display: flex; align-items: center; gap: 10px;
+}
+.pill { background: var(--accent-dim); border: 1px solid rgba(129,140,248,0.2); border-radius: 4px; padding: 1px 7px; font-size: 9px; color: var(--accent); }
+.clear-btn {
+  font-size: 10px; color: var(--text-muted); background: none; border: none;
+  cursor: pointer; font-family: var(--mono); letter-spacing: 0.08em;
+  transition: color 0.18s; padding: 3px 6px; border-radius: 4px;
+}
+.clear-btn:hover { color: var(--error); }
+
+/* Stats summary */
+.stats-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
+}
+.stat-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 12px; text-align: center;
+}
+.stat-box-label { font-family: var(--mono); font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+.stat-box-val { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--text); line-height: 1; }
+.stat-box-val.good   { color: var(--success); }
+.stat-box-val.acc    { color: var(--accent); }
+.stat-box-val.cyan   { color: var(--cyan); }
+
+/* Table */
+.history-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+table.htable { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 10.5px; min-width: 620px; }
+table.htable th {
+  text-align: left; padding: 9px 12px; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); font-weight: 400;
+  letter-spacing: 0.18em; font-size: 8.5px; text-transform: uppercase;
+  background: var(--surface); white-space: nowrap;
+}
+table.htable td { padding: 10px 12px; border-bottom: 1px solid rgba(28,28,48,0.6); color: var(--text-dim); vertical-align: middle; }
+table.htable tr:last-child td { border-bottom: none; }
+table.htable tbody tr { transition: background 0.12s; }
+table.htable tbody tr:hover td { background: rgba(129,140,248,0.02); }
+
+.badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+.badge-ok   { background: rgba(52,211,153,0.1);  border: 1px solid rgba(52,211,153,0.22); color: var(--success); }
+.badge-fail { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.22); color: var(--error); }
+.badge-to   { background: rgba(251,191,36,0.1);  border: 1px solid rgba(251,191,36,0.22);  color: var(--warning); }
+.badge-hard { background: rgba(251,191,36,0.07); border: 1px solid rgba(251,191,36,0.18);  color: var(--warning); font-size: 7px; }
+.badge-norm { background: rgba(52,211,153,0.07); border: 1px solid rgba(52,211,153,0.18);  color: var(--success); }
+.badge-rev  { background: rgba(248,113,113,0.07);border: 1px solid rgba(248,113,113,0.18); color: var(--error); }
+.badge-dist { background: rgba(129,140,248,0.07);border: 1px solid rgba(129,140,248,0.18); color: var(--accent); font-size: 7px; }
+
+.latency-cell { display: flex; align-items: center; gap: 7px; }
+.lbar { flex: 1; height: 2px; background: var(--border); border-radius: 2px; max-width: 60px; }
+.lbar-fill { height: 100%; border-radius: 2px; background: var(--accent); opacity: 0.55; }
+.brain-score { color: var(--cyan); font-weight: 500; }
+
+.empty-state { text-align: center; padding: 28px; color: var(--text-muted); font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <p class="eyebrow">Cognitive Assessment Tool</p>
+    <h1><span class="lns">LNS</span> — Letter-Number Sequencing</h1>
+    <p class="subtitle">Reorder the sequence by the flashed rule — numbers then letters, or the reverse</p>
+  </div>
+  <div class="header-score">
+    <span class="score-label">Avg Brain Speed</span>
+    <span class="score-val" id="avgScore">—</span>
+  </div>
+</header>
+
+<!-- Settings -->
+<div class="settings-grid">
+
+  <div class="settings-card">
+    <p class="card-title">Presentation</p>
+    <div class="settings-rows">
+      <div class="setting-row">
+        <span class="setting-label">Sequential (1s each)</span>
+        <label class="toggle"><input type="checkbox" id="seqToggle" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Speech TTS</span>
+        <label class="toggle"><input type="checkbox" id="ttsToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">3s Hold Delay<small>Forces memory under delay</small></span>
+        <label class="toggle"><input type="checkbox" id="delayToggle"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <p class="card-title">Difficulty</p>
+    <div class="settings-rows">
+      <div class="setting-row">
+        <span class="setting-label">Hard Mode<small>0/O · 1/I · 5/S ambiguity</small></span>
+        <label class="toggle warn"><input type="checkbox" id="hardToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Distractors<small>Inject # $ % * — ignore them</small></span>
+        <label class="toggle warn"><input type="checkbox" id="distToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Rule Flip<small>50% chance of reverse order</small></span>
+        <label class="toggle cyan"><input type="checkbox" id="flipToggle"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-card full">
+    <p class="card-title">Precision Controls</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 28px;">
+      <div class="setting-row">
+        <span class="setting-label">String Length</span>
+        <select class="ctrl-select" id="levelSelect" onchange="onLevelSelect()">
+          <option value="auto" selected>Auto</option>
+          <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+          <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+          <option value="9">9</option><option value="10">10</option><option value="11">11</option>
+          <option value="12">12</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Auto-Progress<small>5 correct ↑ · 2 wrong ↓</small></span>
+        <label class="toggle"><input type="checkbox" id="autoProgToggle" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row" style="grid-column:1/-1;">
+        <span class="setting-label" style="white-space:nowrap; min-width:100px;">Response Limit</span>
+        <div class="slider-wrap" style="flex:1; max-width:none;">
+          <input type="range" class="ctrl-slider" id="timerSlider" min="10" max="300" step="1" value="150" oninput="onTimerSlider()">
+          <span class="slider-val" id="timerVal">15.0s</span>
+        </div>
+        <label class="toggle" style="margin-left:10px;"><input type="checkbox" id="timerToggle"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Meta Bar -->
+<div class="meta-bar">
+  <div class="meta-stat">
+    <span class="stat-label">Length</span>
+    <span class="stat-val" id="levelDisplay">3</span>
+    <span id="hardBadge" class="mode-pill" style="display:none">HARD</span>
+  </div>
+  <div class="streak-group">
+    <div class="streak-track">
+      <span class="track-label">5↑</span>
+      <div class="dots" id="okDots"></div>
+    </div>
+    <div class="streak-track">
+      <span class="track-label">2↓</span>
+      <div class="dots" id="errDots"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Stage -->
+<div class="stage" id="stage">
+  <div class="stage-scanline"></div>
+
+  <div class="rule-flash" id="ruleFlash">
+    <span class="rule-flash-label">Apply this rule</span>
+    <span class="rule-flash-text normal" id="ruleFlashText">NORMAL</span>
+    <span class="rule-flash-sub" id="ruleFlashSub">Numbers ↑ first · Letters A → Z</span>
+  </div>
+
+  <div class="idle-content" id="idleContent">
+    <div class="idle-icon">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#818cf8" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15M14.25 3.104c.251.023.501.05.75.082M19.8 15l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.607L5 14.5m14.8.5l.38 1.91a2.25 2.25 0 01-2.17 2.79H6.99a2.25 2.25 0 01-2.17-2.79l.38-1.91M5 14.5l-.38.393"/>
+      </svg>
+    </div>
+    <p class="idle-text">Press <strong>Start Trial</strong> to begin.<br>Watch the sequence, then recall it by the flashed rule.</p>
+  </div>
+
+  <div class="seq-display" id="seqDisplay"></div>
+  <p class="stage-hint" id="stageHint"></p>
+
+  <div class="countdown-wrap" id="countdownWrap">
+    <div class="ring-wrap">
+      <svg width="68" height="68" viewBox="0 0 68 68">
+        <circle class="ring-bg" cx="34" cy="34" r="31"/>
+        <circle class="ring-fg" id="ringFg" cx="34" cy="34" r="31"/>
+      </svg>
+      <div class="ring-num" id="ringNum">3</div>
+    </div>
+    <p class="delay-label">Hold it in mind…</p>
+  </div>
+
+  <div class="answer-area" id="answerArea">
+    <span class="answer-rule-pill normal" id="answerRulePill">NORMAL ORDER</span>
+    <p class="answer-hint" id="answerHint">Numbers <strong>ascending</strong> first → Letters <strong>A to Z</strong></p>
+    <div class="input-row">
+      <input type="text" class="answer-input" id="answerInput"
+             placeholder="type here…"
+             autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20">
+      <button class="btn btn-primary btn-sm" onclick="submitAnswer()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timer bar -->
+<div class="timer-bar-wrap" id="timerBarWrap">
+  <div class="timer-bar-fill" id="timerBarFill"></div>
+</div>
+
+<!-- Feedback -->
+<div class="feedback" id="feedback"></div>
+
+<!-- Start Row -->
+<div class="start-row">
+  <button class="btn btn-primary" id="startBtn" onclick="startTrial()">Start Trial</button>
+  <button class="btn btn-ghost"   id="resetBtn" onclick="resetLevel()">Reset Level</button>
+</div>
+
+<!-- Analytics -->
+<div class="history-section">
+  <div class="section-header">
+    <span class="section-title">
+      Session History
+      <span class="pill" id="trialPill">0 trials</span>
+    </span>
+    <button class="clear-btn" onclick="clearHistory()">Clear</button>
+  </div>
+
+  <div class="stats-summary" id="statsSummary" style="display:none">
+    <div class="stat-box">
+      <div class="stat-box-label">Accuracy</div>
+      <div class="stat-box-val good" id="statAcc">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-label">Avg Latency</div>
+      <div class="stat-box-val acc" id="statLat">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-label">Best Speed</div>
+      <div class="stat-box-val cyan" id="statBest">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-label">Total Trials</div>
+      <div class="stat-box-val" id="statTotal">—</div>
+    </div>
+  </div>
+
+  <div class="history-wrap">
+    <table class="htable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Sequence</th>
+          <th>Your Answer</th>
+          <th>Expected</th>
+          <th>Len</th>
+          <th>Rule</th>
+          <th>Time (ms)</th>
+          <th>Brain Speed</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody">
+        <tr><td colspan="9"><div class="empty-state">No trials yet — start your first trial above</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ━━━ STATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const $ = id => document.getElementById(id);
+
+let autoLength    = 3;
+let seqLength     = 3;
+let okStreak      = 0;
+let errStreak     = 0;
+let trialCount    = 0;
+let history       = [];
+let currentSeq    = '';
+let currentRule   = 'normal';
+let inputStart    = null;
+let running       = false;
+let timerHandle   = null;
+let warnHandle    = null;
+let dangerHandle  = null;
+let timerLimitMs  = 15000;
+
+// ━━━ SETTINGS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+$('hardToggle').addEventListener('change', () => {
+  $('hardBadge').style.display = $('hardToggle').checked ? '' : 'none';
+});
+
+function onTimerSlider() {
+  const v = parseInt($('timerSlider').value);
+  $('timerVal').textContent = (v / 10).toFixed(1) + 's';
+  timerLimitMs = v * 100;
+}
+
+function onLevelSelect() {
+  const v = $('levelSelect').value;
+  if (v !== 'auto') { autoLength = parseInt(v); seqLength = parseInt(v); updateLevelUI(); }
+}
+
+// ━━━ SEQUENCE GENERATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const NORMAL_NUMS = '234678';
+const NORMAL_LETS = 'ABCDEFGHJKLMNPQRTUVWXYZ';
+const HARD_NUMS   = '011550';
+const HARD_LETS   = 'IOSBDCG';
+const AMBIGUOUS   = new Set(['0','1','5','I','O','S']);
+const DISTRACTORS = ['#','$','%','*'];
+
+function randFrom(s) { return s[Math.floor(Math.random() * s.length)]; }
+function isDistractor(c) { return DISTRACTORS.includes(c); }
+function isNum(c) { return /\d/.test(c); }
+function isLet(c) { return /[A-Z]/i.test(c); }
+
+function generateSequence(length) {
+  const isHard  = $('hardToggle').checked;
+  const numPool = isHard ? HARD_NUMS : NORMAL_NUMS;
+  const letPool = isHard ? HARD_LETS : NORMAL_LETS;
+
+  const chars = [
+    numPool[Math.floor(Math.random() * numPool.length)],
+    letPool[Math.floor(Math.random() * letPool.length)]
+  ];
+  for (let i = 2; i < length; i++) {
+    chars.push(Math.random() < 0.5
+      ? numPool[Math.floor(Math.random() * numPool.length)]
+      : letPool[Math.floor(Math.random() * letPool.length)]);
+  }
+  // Shuffle
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  // Inject distractors
+  if ($('distToggle').checked) {
+    const n = Math.max(1, Math.floor(length / 3));
+    for (let d = 0; d < n; d++) {
+      const pos = Math.floor(Math.random() * (chars.length + 1));
+      chars.splice(pos, 0, randFrom(DISTRACTORS));
+    }
+  }
+  return chars.join('');
+}
+
+function getCorrectAnswer(seq, rule) {
+  const pure = [...seq].filter(c => !isDistractor(c));
+  const nums = pure.filter(isNum).sort();
+  const lets = pure.filter(isLet).sort();
+  if (rule === 'normal') {
+    return [...nums, ...lets].join('');
+  } else {
+    return [...[...lets].reverse(), ...[...nums].reverse()].join('');
+  }
+}
+
+// ━━━ TTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function speak(text) {
+  if (!$('ttsToggle').checked || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.82; u.pitch = 1;
+  window.speechSynthesis.speak(u);
+}
+
+// ━━━ UI HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function setRunning(v) {
+  running = v;
+  $('startBtn').disabled = v;
+  $('resetBtn').disabled = v;
+  $('stage').classList.toggle('active', v);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function updateLevelUI() {
+  $('levelDisplay').textContent = $('levelSelect').value === 'auto' ? autoLength : seqLength;
+  renderStreakDots();
+}
+
+function renderStreakDots() {
+  const okEl = $('okDots'); const errEl = $('errDots');
+  okEl.innerHTML = ''; errEl.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot ok' + (i < okStreak ? ' filled' : '');
+    okEl.appendChild(d);
+  }
+  for (let i = 0; i < 2; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot err' + (i < errStreak ? ' filled' : '');
+    errEl.appendChild(d);
+  }
+}
+
+// ━━━ PRESENTATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function charClass(c) {
+  const isHard = $('hardToggle').checked;
+  if (isDistractor(c)) return 'dist';
+  if (isNum(c)) return isHard && AMBIGUOUS.has(c) ? 'num hard-ambig' : 'num';
+  return isHard && AMBIGUOUS.has(c) ? 'let hard-ambig' : 'let';
+}
+
+async function presentSequence(seq) {
+  const display = $('seqDisplay');
+  const hint    = $('stageHint');
+
+  $('idleContent').style.display = 'none';
+  display.style.display = 'flex';
+  display.innerHTML = '';
+  hint.style.display = '';
+  hint.textContent = $('seqToggle').checked ? 'Memorise each character…' : 'Memorise the sequence…';
+
+  if ($('seqToggle').checked) {
+    for (let i = 0; i < seq.length; i++) {
+      display.innerHTML = '';
+      const c = seq[i];
+      const span = document.createElement('span');
+      span.className = `seq-char ${charClass(c)}`;
+      span.textContent = c;
+      display.appendChild(span);
+      if (!isDistractor(c)) speak(c);
+      await sleep(1000);
+    }
+    await sleep(250);
+  } else {
+    display.innerHTML = [...seq].map((c, i) =>
+      `<span class="seq-char ${charClass(c)}" style="animation-delay:${i*55}ms">${c}</span>`
+    ).join('');
+    if ($('ttsToggle').checked) speak([...seq].filter(c => !isDistractor(c)).join(' '));
+    await sleep(2500);
+  }
+
+  display.innerHTML = '';
+  hint.textContent = '';
+  hint.style.display = 'none';
+}
+
+// ━━━ RULE FLASH ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+async function flashRule(rule) {
+  const el   = $('ruleFlash');
+  const text = $('ruleFlashText');
+  const sub  = $('ruleFlashSub');
+
+  if (rule === 'normal') {
+    text.textContent = 'NORMAL';
+    text.className   = 'rule-flash-text normal';
+    sub.textContent  = 'Numbers ↑ first · Letters A → Z';
+  } else {
+    text.textContent = 'REVERSE';
+    text.className   = 'rule-flash-text reverse';
+    sub.textContent  = 'Letters Z → A first · Numbers ↓';
+  }
+
+  el.classList.add('show');
+  await sleep(1400);
+  el.classList.remove('show');
+  await sleep(120);
+}
+
+// ━━━ DELAY PHASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+async function runDelay() {
+  const wrap  = $('countdownWrap');
+  const numEl = $('ringNum');
+  const ring  = $('ringFg');
+  const CIRC  = 195;
+
+  wrap.style.display = 'flex';
+  $('seqDisplay').style.display = 'none';
+
+  for (let s = 3; s >= 1; s--) {
+    numEl.textContent = s;
+    ring.style.strokeDashoffset = CIRC * (1 - s / 3);
+    await sleep(1000);
+  }
+  ring.style.strokeDashoffset = CIRC;
+  await sleep(180);
+  wrap.style.display = 'none';
+}
+
+// ━━━ RESPONSE TIMER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function startResponseTimer(onTimeout) {
+  if (!$('timerToggle').checked) return;
+
+  const wrap = $('timerBarWrap');
+  const fill = $('timerBarFill');
+  const dur  = timerLimitMs;
+
+  wrap.style.display = 'block';
+  fill.style.transition = 'none';
+  fill.style.transform  = 'scaleX(1)';
+  fill.className = 'timer-bar-fill';
+  fill.getBoundingClientRect(); // force reflow
+
+  fill.classList.add('running');
+  fill.style.transition = `transform ${dur}ms linear, background-color 0.6s`;
+  fill.style.transform  = 'scaleX(0)';
+
+  warnHandle   = setTimeout(() => fill.classList.add('warn-zone'),   dur * 0.5);
+  dangerHandle = setTimeout(() => fill.classList.add('danger-zone'), dur * 0.8);
+  timerHandle  = setTimeout(onTimeout, dur);
+}
+
+function stopResponseTimer() {
+  clearTimeout(timerHandle);
+  clearTimeout(warnHandle);
+  clearTimeout(dangerHandle);
+  const wrap = $('timerBarWrap');
+  const fill = $('timerBarFill');
+  fill.style.transition = 'none';
+  wrap.style.display = 'none';
+}
+
+// ━━━ ANSWER PHASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function showAnswerPhase(rule) {
+  const area  = $('answerArea');
+  const pill  = $('answerRulePill');
+  const hint  = $('answerHint');
+  const input = $('answerInput');
+
+  pill.textContent = rule === 'normal' ? 'NORMAL ORDER' : 'REVERSE ORDER';
+  pill.className   = 'answer-rule-pill ' + (rule === 'normal' ? 'normal' : 'reverse');
+
+  hint.innerHTML = rule === 'normal'
+    ? 'Numbers <strong>ascending</strong> first → Letters <strong>A to Z</strong>'
+    : 'Letters <strong>Z to A</strong> first → Numbers <strong>descending</strong>';
+
+  if ($('distToggle').checked) {
+    hint.innerHTML += `<span class="dist-note">Ignore distractors: # $ % *</span>`;
+  }
+
+  area.classList.add('visible');
+  input.value = '';
+  input.focus();
+  inputStart = performance.now();
+}
+
+function hideAnswerPhase() {
+  $('answerArea').classList.remove('visible');
+  $('answerInput').value = '';
+}
+
+// ━━━ MAIN TRIAL FLOW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+async function startTrial() {
+  if (running) return;
+  setRunning(true);
+  hideFeedback();
+  hideAnswerPhase();
+  stopResponseTimer();
+
+  seqLength = $('levelSelect').value === 'auto' ? autoLength : parseInt($('levelSelect').value);
+  currentSeq  = generateSequence(seqLength);
+  currentRule = ($('flipToggle').checked && Math.random() < 0.5) ? 'reverse' : 'normal';
+
+  await presentSequence(currentSeq);
+  await flashRule(currentRule);
+
+  if ($('delayToggle').checked) await runDelay();
+
+  showAnswerPhase(currentRule);
+  startResponseTimer(handleTimeout);
+  setRunning(false);
+}
+
+function handleTimeout() {
+  stopResponseTimer();
+  const correct = getCorrectAnswer(currentSeq, currentRule);
+  trialCount++;
+  okStreak  = 0;
+  errStreak = Math.min(errStreak + 1, 2);
+  applyProgression(false);
+  logTrial('timeout', currentSeq, '—', correct, currentSeq.length, timerLimitMs);
+  showFeedback('timeout', correct, '—');
+  updateLevelUI();
+  hideAnswerPhase();
+  $('idleContent').style.display = '';
+  updateSummary();
+}
+
+function submitAnswer() {
+  if (!inputStart) return;
+  const input   = $('answerInput');
+  const userAns = input.value.trim().toUpperCase();
+  if (!userAns) return;
+
+  stopResponseTimer();
+  const latency = Math.round(performance.now() - inputStart);
+  const correct = getCorrectAnswer(currentSeq, currentRule);
+  const isOk    = userAns === correct;
+
+  trialCount++;
+
+  if (isOk) {
+    okStreak  = Math.min(okStreak + 1, 5);
+    errStreak = 0;
+    applyProgression(true);
+    showFeedback('correct', correct, userAns);
+  } else {
+    errStreak = Math.min(errStreak + 1, 2);
+    okStreak  = 0;
+    applyProgression(false);
+    showFeedback('wrong', correct, userAns);
+  }
+
+  logTrial(isOk ? 'ok' : 'fail', currentSeq, userAns, correct, currentSeq.length, latency);
+  updateLevelUI();
+  hideAnswerPhase();
+  $('idleContent').style.display = '';
+  updateSummary();
+}
+
+function applyProgression(wasCorrect) {
+  if (!$('autoProgToggle').checked || $('levelSelect').value !== 'auto') return;
+  if (wasCorrect && okStreak >= 5) {
+    autoLength = Math.min(autoLength + 1, 12);
+    okStreak   = 0;
+  }
+  if (!wasCorrect && errStreak >= 2) {
+    autoLength = Math.max(autoLength - 1, 2);
+    errStreak  = 0;
+  }
+}
+
+$('answerInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+
+// ━━━ FEEDBACK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function showFeedback(type, correct, user) {
+  const fb = $('feedback');
+  if (type === 'correct') {
+    fb.className = 'feedback show correct';
+    fb.innerHTML = `✓ Correct — <span style="letter-spacing:0.2em">${correct}</span>`;
+  } else if (type === 'wrong') {
+    fb.className = 'feedback show wrong';
+    fb.innerHTML = `✗ Incorrect<span class="fb-detail">Expected: <span class="val">${correct}</span> &nbsp;·&nbsp; You wrote: <span class="val">${user}</span></span>`;
+  } else {
+    fb.className = 'feedback show timeout';
+    fb.innerHTML = `⏱ Time Out<span class="fb-detail">Expected: <span class="val">${correct}</span></span>`;
+  }
+}
+
+function hideFeedback() { $('feedback').className = 'feedback'; }
+
+// ━━━ RESET ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function resetLevel() {
+  autoLength = 3; seqLength = 3; okStreak = 0; errStreak = 0;
+  $('levelSelect').value = 'auto';
+  updateLevelUI(); hideFeedback(); hideAnswerPhase(); stopResponseTimer();
+  $('idleContent').style.display   = '';
+  $('seqDisplay').style.display    = 'none';
+  $('countdownWrap').style.display = 'none';
+  $('ruleFlash').classList.remove('show');
+  $('stage').classList.remove('active');
+}
+
+// ━━━ ANALYTICS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const MAX_LAT = 30000;
+
+function brainSpeed(len, latMs) {
+  return latMs > 0 ? (len / (latMs / 1000)).toFixed(3) : null;
+}
+
+function logTrial(status, seq, user, correct, len, latency) {
+  const bs = status === 'ok' ? brainSpeed(len, latency) : null;
+  history.unshift({
+    n: trialCount, seq, user, correct, len, latency, status,
+    rule: currentRule,
+    hard: $('hardToggle').checked,
+    dist: $('distToggle').checked,
+    bs
+  });
+  renderHistory();
+}
+
+function renderHistory() {
+  const body = $('historyBody');
+  $('trialPill').textContent = history.length + (history.length === 1 ? ' trial' : ' trials');
+
+  if (!history.length) {
+    body.innerHTML = '<tr><td colspan="9"><div class="empty-state">No trials yet — start your first trial above</div></td></tr>';
+    return;
+  }
+
+  body.innerHTML = history.map(h => {
+    const pct  = Math.min(100, Math.round((h.latency / MAX_LAT) * 100));
+    const rBadge  = h.rule === 'normal'
+      ? '<span class="badge badge-norm">NORM</span>'
+      : '<span class="badge badge-rev">REV</span>';
+    const resBadge = h.status === 'ok'
+      ? '<span class="badge badge-ok">PASS</span>'
+      : h.status === 'fail'
+        ? '<span class="badge badge-fail">FAIL</span>'
+        : '<span class="badge badge-to">T/O</span>';
+    const extras = [
+      h.hard ? '<span class="badge badge-hard">HARD</span>' : '',
+      h.dist ? '<span class="badge badge-dist">DIST</span>' : ''
+    ].filter(Boolean).join(' ');
+
+    const seqHtml = [...h.seq].map(c => {
+      if (isDistractor(c)) return `<span style="color:var(--text-muted)">${c}</span>`;
+      if (isNum(c)) return `<span style="color:var(--accent)">${c}</span>`;
+      return c;
+    }).join('');
+
+    return `<tr>
+      <td style="color:var(--text-muted)">${h.n}</td>
+      <td style="letter-spacing:0.18em">${seqHtml}</td>
+      <td style="letter-spacing:0.18em;color:${h.status==='ok'?'var(--success)':h.status==='timeout'?'var(--warning)':'var(--error)'}">${h.user}</td>
+      <td style="letter-spacing:0.18em;color:var(--text)">${h.correct}</td>
+      <td>${h.len}</td>
+      <td>${rBadge}</td>
+      <td>
+        <div class="latency-cell">
+          <span>${h.latency}ms</span>
+          <div class="lbar"><div class="lbar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+      <td>${h.bs ? `<span class="brain-score">${h.bs}</span>` : '—'}</td>
+      <td>${resBadge} ${extras}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateSummary() {
+  const sum = $('statsSummary');
+  if (!history.length) { sum.style.display = 'none'; return; }
+  sum.style.display = 'grid';
+
+  const total  = history.length;
+  const passed = history.filter(h => h.status === 'ok').length;
+  const acc    = Math.round((passed / total) * 100);
+
+  const latencies = history.filter(h => h.status !== 'timeout' && h.latency > 0);
+  const avgLat    = latencies.length
+    ? Math.round(latencies.reduce((s, h) => s + h.latency, 0) / latencies.length)
+    : 0;
+
+  const scores = history.filter(h => h.bs).map(h => parseFloat(h.bs));
+  const bestBs = scores.length ? Math.max(...scores).toFixed(3) : '—';
+  const avgBs  = scores.length ? (scores.reduce((s,v)=>s+v,0)/scores.length).toFixed(3) : '—';
+
+  $('statAcc').textContent   = acc + '%';
+  $('statLat').textContent   = avgLat ? avgLat + 'ms' : '—';
+  $('statBest').textContent  = bestBs;
+  $('statTotal').textContent = total;
+  $('avgScore').textContent  = avgBs;
+}
+
+function clearHistory() {
+  history = []; trialCount = 0;
+  renderHistory(); updateSummary();
+}
+
+// ━━━ INIT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+updateLevelUI();
+renderHistory();
+onTimerSlider();
+</script>
+</body>
+</html>
